@@ -1,0 +1,15 @@
+boto==2.48.0
+bz2file==0.98
+certifi==2017.4.17
+chardet==3.0.4
+gensim==2.2.0
+idna==2.5
+numpy
+pip==9.0.1
+requests==2.18.1
+scipy
+setuptools==36.0.1
+six==1.10.0
+smart-open
+urllib3
+wheel
