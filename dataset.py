@@ -97,7 +97,7 @@ def loadEventsFromBatchFiles(batch_file_list):
   print "Finished in %f secs." % (time.time() - start)
   return (subjects, actions, predicates)
 
-def writeDictionariesToDisk(subject_dict, action_dict, predicate_dict, dump_dir = './dicts', how='json'):
+def writeRawDictionariesToDisk(subject_dict, action_dict, predicate_dict, dump_dir = './dicts', how='json'):
   """
   Stores the triple dictionaries to pickle files.
   """
@@ -128,21 +128,103 @@ def writeDictionariesToDisk(subject_dict, action_dict, predicate_dict, dump_dir 
     print "Error: serializer type not understood."
   print "Finished storing dictionaries to dump files."
 
-def loadDictionaries(dump_dir = './dicts', how='json'):
+def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_dict_raw, dump_dir = './dicts', how='json'):
+  """
+  Stores subject, action, predicate dictionaries to disk where each item is:
+  id (integer): item (string)
+
+  Deletes dictionaries when it's done with them to free up memory.
+  """
+  dump_dir = os.path.abspath(dump_dir)
+  if not os.path.exists(dump_dir):
+    os.makedirs(dump_dir)
+
+  idx_subjects_by_id = {}
+  idx_actions_by_id = {}
+  idx_predicates_by_id = {}
+
+  idx_subjects_by_str = {}
+  idx_actions_by_str = {}
+  idx_predicates_by_str = {}
+
+  # build subject dictionaries
+  s_idx = 0
+  for s in subject_dict_raw.keys():
+    idx_subjects_by_id[s_idx] = s
+    idx_subjects_by_str[s] = s_idx
+    s_idx += 1
+
+  print "Dumping indexed subjects dictionaries..."
+  if (how == 'pickle'):
+    pickle.dump(idx_subjects_by_id, open(os.path.join(dump_dir, 'subjects_by_id.p'), 'wb'))
+    pickle.dump(idx_subjects_by_str, open(os.path.join(dump_dir, 'subjects_by_str.p'), 'wb'))
+  else:
+    with open(os.path.join(dump_dir, 'subjects_by_id.json'), 'w') as fp:
+      json.dump(idx_subjects_by_id, fp, indent=0)
+    with open(os.path.join(dump_dir, 'subjects_by_str.json'), 'w') as fp:
+      json.dump(idx_subjects_by_str, fp, indent=0)
+  del idx_subjects_by_id, idx_subjects_by_str, subject_dict_raw
+
+  # build actions dictionaries
+  a_idx = 0
+  for a in action_dict_raw.keys():
+    idx_actions_by_id[a_idx] = a
+    idx_actions_by_str[a] = a_idx
+    a_idx += 1
+
+  print "Dumping indexed actions dictionaries..."
+  if (how == 'pickle'):
+    pickle.dump(idx_actions_by_id, open(os.path.join(dump_dir, 'actions_by_id.p'), 'wb'))
+    pickle.dump(idx_actions_by_str, open(os.path.join(dump_dir, 'actions_by_str.p'), 'wb'))
+  else:
+    with open(os.path.join(dump_dir, 'actions_by_id.json'), 'w') as fp:
+      json.dump(idx_actions_by_id, fp, indent=0)
+    with open(os.path.join(dump_dir, 'actions_by_str.json'), 'w') as fp:
+      json.dump(idx_actions_by_str, fp, indent=0)
+  del idx_actions_by_id, idx_actions_by_str, action_dict_raw
+
+  # build predicates dictionaries
+  p_idx = 0
+  for p in predicate_dict_raw.keys():
+    idx_predicates_by_id[p_idx] = p
+    idx_predicates_by_str[p] = p_idx
+    p_idx += 1
+
+  print "Dumping indexed predicates dictionaries..."
+  if (how == 'pickle'):
+    pickle.dump(idx_predicates_by_id, open(os.path.join(dump_dir, 'predicates_by_id.p'), 'wb'))
+    pickle.dump(idx_predicates_by_str, open(os.path.join(dump_dir, 'predicates_by_str.p'), 'wb'))
+  else:
+    with open(os.path.join(dump_dir, 'predicates_by_id.json'), 'w') as fp:
+      json.dump(idx_predicates_by_id, fp, indent=0)
+    with open(os.path.join(dump_dir, 'predicates_by_str.json'), 'w') as fp:
+      json.dump(idx_predicates_by_str, fp, indent=0)
+  del idx_predicates_by_id, idx_predicates_by_str, predicate_dict_raw
+
+  print "Finished storing indexed dictionaries to dump files."
+
+
+def loadRawDictionaries(dump_dir = './dicts', how='json'):
   dump_dir = os.path.abspath(dump_dir)
 
   if (how == 'json'):
     with open(os.path.join(dump_dir, 'subjects.json'), 'r') as fp:
       subjects = json.load(fp)
+    print "Loaded subjects dictionary."
     with open(os.path.join(dump_dir, 'actions.json'), 'r') as fp:
       actions = json.load(fp)
+    print "Loaded actions dictionary."
     with open(os.path.join(dump_dir, 'predicates.json'), 'r') as fp:
       predicates = json.load(fp)
+    print "Loaded predicates dictionary."
 
   elif (how == 'pickle'):
     subjects = pickle.load(os.path.join(dump_dir, 'subjects.p'), "rb")
+    print "Loaded subjects dictionary."
     actions = pickle.load(os.path.join(dump_dir, 'actions.p'), "rb")
+    print "Loaded actions dictionary."
     predicates = pickle.load(os.path.join(dump_dir, 'predicates.p'), "rb")
+    print "Loaded predicates dictionary."
 
   else:
     print "Error: serializer type not understood."
@@ -242,10 +324,12 @@ def main():
   # path = os.path.abspath(rel_dir)
   # triples = getTriplesFromBatch(path)
   # print triples
-  paths = getBatchPaths('all')
-  print "Found paths:", len(paths)
-  s, a, p = loadEventsFromBatchFiles(paths)
-  writeDictionariesToDisk(s, a, p, how='json')
+  #paths = getBatchPaths('all')
+  #print "Found paths:", len(paths)
+  #s, a, p = loadEventsFromBatchFiles(paths)
+  # writeDictionariesToDisk(s, a, p, how='json')
+  subjects_raw, actions_raw, predicates_raw = loadRawDictionaries()
+  writeIndexedDictionariesToDisk(subjects_raw, actions_raw, predicates_raw)
 
 if __name__ == '__main__':
   main()
