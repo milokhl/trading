@@ -4,6 +4,7 @@ import time
 import sys, os
 import cPickle as pickle
 import json
+import random
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Stanford-OpenIE-Python'))
 from wrapper import stanford_ie, extract_events_filelist
@@ -58,13 +59,14 @@ def getEventTriplesFromBatch(batch_file):
   print "Unparsable lines:", unparsable_lines
   return triples
 
-def loadEventsFromBatchFiles(batch_file_list):
+def loadEventsFromBatchFiles(batch_file_list, return_dicts=True):
   """
   """
   start = time.time()
   subjects = {}
   actions = {}
   predicates = {}
+  events = []
 
   ctr = 0
   sCollisions, aCollisions, pCollisions = 0, 0, 0
@@ -73,29 +75,36 @@ def loadEventsFromBatchFiles(batch_file_list):
     print "Loading batch %d/%d into memory." % (ctr, len(batch_file_list))
     batch_file = os.path.abspath(batch_file)
     triples = getEventTriplesFromBatch(batch_file)
-    for t in triples:
-      if t[0] in subjects:
-        subjects[t[0]] += 1
-        sCollisions += 1
-      else:
-        subjects[t[0]] = 1
+    events.extend(triples)
 
-      if t[1] in actions:
-        actions[t[1]] += 1
-        aCollisions += 1
-      else:
-        actions[t[1]] = 1
+    if (return_dicts):
+      for t in triples:
+        if t[0] in subjects:
+          subjects[t[0]] += 1
+          sCollisions += 1
+        else:
+          subjects[t[0]] = 1
 
-      if t[2] in predicates:
-        predicates[t[2]] += 1
-        pCollisions += 1
-      else:
-        predicates[t[2]] = 1
+        if t[1] in actions:
+          actions[t[1]] += 1
+          aCollisions += 1
+        else:
+          actions[t[1]] = 1
 
-  print "\n Unique Subjects: %d Unique Actions: %d Unique Predicates: %d" % (len(subjects), len(actions), len(predicates))
-  print "\n Subject Collisions: %d Action Collisions: %d Predicate Collisions: %d" % (sCollisions, aCollisions, pCollisions)
-  print "Finished in %f secs." % (time.time() - start)
-  return (subjects, actions, predicates)
+        if t[2] in predicates:
+          predicates[t[2]] += 1
+          pCollisions += 1
+        else:
+          predicates[t[2]] = 1
+
+  if (return_dicts):
+    print "\n Unique Subjects: %d Unique Actions: %d Unique Predicates: %d" % (len(subjects), len(actions), len(predicates))
+    print "\n Subject Collisions: %d Action Collisions: %d Predicate Collisions: %d" % (sCollisions, aCollisions, pCollisions)
+    print "Finished in %f secs." % (time.time() - start)
+    return (subjects, actions, predicates)
+  else:
+    return events
+
 
 def writeRawDictionariesToDisk(subject_dict, action_dict, predicate_dict, dump_dir = './dicts', how='json'):
   """
@@ -231,6 +240,29 @@ def loadRawDictionaries(dump_dir = './dicts', how='json'):
   print "Finished loading dictionaries from dump."
   return (subjects, actions, predicates)
 
+def loadIndexedDictionaries(dump_dir = './dicts', how='json',
+    types=['subjects_by_id', 'subjects_by_str', 'actions_by_id', 'actions_by_str', 'predicates_by_id', 'predicates_by_str']):
+  dump_dir = os.path.abspath(dump_dir)
+
+  if (how == 'json'):
+    result_dicts = {}
+    for t in types:
+      with open(os.path.join(dump_dir, '%s.json' % t), 'r') as fp:
+        result_dicts[t] = json.load(fp)
+        print "Loaded %s.json." % t
+
+  elif (how == 'pickle'):
+    for t in types:
+      result_dicts[t] = pickle.load(os.path.join(dump_dir, '%s.p' % t), 'rb')
+      print "Loaded %s.p" % t
+
+  else:
+    print "Error: serializer type not understood."
+
+  print "Finished loading dictionaries from dump."
+  return result_dicts
+  # return (subjects_by_id, actions_by_id, predicates_by_id, subjects_by_str, actions_by_str, predicates_by_str)
+ 
 
 def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt',
           out_dir = './events', start_batch = 0):
@@ -253,6 +285,7 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
 
   ctr = 0
   batch_num = 0
+
   mode = 'a'
   batch_start = time.time()
   for p in article_paths:
@@ -265,7 +298,6 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
         continue
 
       print "[INFO] Writing event batch #%d. %d/%d articles done." % (batch_num, ctr, len(article_paths))
-
       # get event tuples from the files listed currently and write them to a batch file
       print "[INFO] Stanford IE is extracting event triples..."
       events = extract_events_filelist(filelist_path, verbose = True, max_entailments_per_clause = 100)
@@ -295,6 +327,111 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
 
   print "[INFO] Finished writing events to disk!"
   return True
+
+def getRandom(dict_by_id):
+  """
+  dict_by_id: a dictionary with uid's as keys and phrases as values
+  """
+  randId = str(random.randint(0, len(dict_by_id)-1))
+  return (randId, dict_by_id[randId])
+
+def writeCorruptEvents(out_dir='./corrupt', event_prefix ='batch_', event_suffix='.txt', name_format='corrupt_*.txt'):
+  """
+  For each batch file, writes a corrupted batch file where one of the
+  three arguments of the triple is replaced randomly from the corresponding dictionary.
+  """
+  dicts = loadIndexedDictionaries(types=['subjects_by_id', 'actions_by_id', 'predicates_by_id'])
+  subjects_by_id = dicts['subjects_by_id']
+  actions_by_id = dicts['actions_by_id']
+  predicates_by_id = dicts['predicates_by_id']
+  path = os.path.abspath(out_dir)
+
+  if not os.path.exists(path):
+    os.makedirs(path)
+
+  batchPaths = getBatchPaths('all')
+  for p in batchPaths:
+    start = p.find(event_prefix)
+    batchNum = p[start+len(event_prefix):]
+    end = batchNum.find(event_suffix)
+    batchNum = batchNum[:end]
+    batchNum = int(batchNum)
+    print "Starting batch #%d." % batchNum 
+
+    events = loadEventsFromBatchFiles([p], return_dicts=False)
+
+    with open(os.path.join(path, name_format.replace('*', str(batchNum))), 'w') as corrFile:
+      idx = 0
+      for e in events:
+        if (idx % 10000 == 0):
+          print "Finished event %d/%d." % (idx, len(events))
+
+        randomArg = random.randint(0, 2)
+        if (randomArg == 0):
+          randId, randPhrase = getRandom(subjects_by_id)
+        elif (randomArg == 1):
+          randId, randPhrase = getRandom(actions_by_id)
+        else:
+          randId, randPhrase = getRandom(predicates_by_id)
+
+        e[randomArg] = randPhrase
+        corrFile.write('%d.%s\n' % (idx, e))
+
+        idx += 1
+
+
+def encodeEventsFilesRealCorrupted(out_dir='./training', real='events_real.txt', corrupted='events_corrupted.txt'):
+  """
+  Creates two files in folder encoded/
+  """
+  print "Getting dictionaries..."
+  dicts = loadIndexedDictionaries()
+  subjects_by_id = dicts['subjects_by_id']
+  #subjects_by_str = dicts['subjects_by_str']
+  actions_by_id = dicts['actions_by_id']
+  #actions_by_str = dicts['actions_by_str']
+  predicates_by_id = dicts['predicates_by_id']
+  #predicates_by_str = dicts['predicates_by_str']
+
+  path = os.path.abspath(out_dir)
+  realPath = os.path.join(path, real)
+  corrPath = os.path.join(path, corrupted)
+
+  batchPaths = getBatchPaths('all')
+
+  # just get the events, not dictionaries
+  events = loadEventsFromBatchFiles(batchPaths, return_dicts=False)
+  del batchPaths
+
+  idx = 0
+  for e in events:
+
+    try:
+      if (idx % 10000 == 0):
+        print "Finished event %d/%d." % (idx, len(events))
+      
+      #s_id = subjects_by_str[e[0]]
+      #a_id = actions_by_str[e[1]]
+      #p_id = predicates_by_str[e[2]]
+
+      with open(realPath, 'w') as realFile:
+        realFile.write('%d.%d,%d,%d\n' % (idx, s_id, a_id, p_id))
+      
+      randomArg = random.randint(0, 2)
+      if (randomArg == 0):
+        s_id, srand = getRandom(subjects_by_id)
+      elif (randomArg == 1):
+        a_id, arand = getRandom(actions_by_id)
+      else:
+        p_id, prand = getRandom(predicates_by_id)
+
+      with open(corrPath, 'w') as corrFile:
+        corrFile.write('%d.%d,%d,%d\n' % (idx, s_id, a_id, p_id))
+
+      idx += 1
+
+    except:
+      print "Error on event:", e
 
 def getBatchPaths(ids, dir='./events', name_format='batch_*.txt'):
   path = os.path.join(os.path.abspath(dir), name_format)
@@ -328,8 +465,10 @@ def main():
   #print "Found paths:", len(paths)
   #s, a, p = loadEventsFromBatchFiles(paths)
   # writeDictionariesToDisk(s, a, p, how='json')
-  subjects_raw, actions_raw, predicates_raw = loadRawDictionaries()
-  writeIndexedDictionariesToDisk(subjects_raw, actions_raw, predicates_raw)
+  #subjects_raw, actions_raw, predicates_raw = loadRawDictionaries()
+  #writeIndexedDictionariesToDisk(subjects_raw, actions_raw, predicates_raw)
+  #encodeEventsFilesRealCorrupted()
+  writeCorruptEvents()
 
 if __name__ == '__main__':
   main()
