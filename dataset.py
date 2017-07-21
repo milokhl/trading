@@ -335,7 +335,9 @@ def getRandom(dict_by_id):
   randId = str(random.randint(0, len(dict_by_id)-1))
   return (randId, dict_by_id[randId])
 
-def writeCorruptEvents(out_dir='./corrupt', event_prefix ='batch_', event_suffix='.txt', name_format='corrupt_*.txt'):
+def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffix='.txt',
+                       corr_name_format='corrupt_*.txt', real_dir='./real',
+                       real_name_format='real_*.txt'):
   """
   For each batch file, writes a corrupted batch file where one of the
   three arguments of the triple is replaced randomly from the corresponding dictionary.
@@ -344,10 +346,16 @@ def writeCorruptEvents(out_dir='./corrupt', event_prefix ='batch_', event_suffix
   subjects_by_id = dicts['subjects_by_id']
   actions_by_id = dicts['actions_by_id']
   predicates_by_id = dicts['predicates_by_id']
-  path = os.path.abspath(out_dir)
 
-  if not os.path.exists(path):
-    os.makedirs(path)
+  # make corrupt path
+  corrPath = os.path.abspath(corr_dir)
+  if not os.path.exists(corrPath):
+    os.makedirs(corrPath)
+
+  # make real path
+  realPath = os.path.abspath(real_dir)
+  if not os.path.exists(realPath):
+    os.makedirs(realPath)
 
   batchPaths = getBatchPaths('all')
   for p in batchPaths:
@@ -360,78 +368,32 @@ def writeCorruptEvents(out_dir='./corrupt', event_prefix ='batch_', event_suffix
 
     events = loadEventsFromBatchFiles([p], return_dicts=False)
 
-    with open(os.path.join(path, name_format.replace('*', str(batchNum))), 'w') as corrFile:
-      idx = 0
-      for e in events:
-        if (idx % 10000 == 0):
-          print "Finished event %d/%d." % (idx, len(events))
+    corrFile = open(os.path.join(corrPath, corr_name_format.replace('*', str(batchNum))), 'w')
+    realFile = open(os.path.join(realPath, real_name_format.replace('*', str(batchNum))), 'w')
 
-        randomArg = random.randint(0, 2)
-        if (randomArg == 0):
-          randId, randPhrase = getRandom(subjects_by_id)
-        elif (randomArg == 1):
-          randId, randPhrase = getRandom(actions_by_id)
-        else:
-          randId, randPhrase = getRandom(predicates_by_id)
-
-        e[randomArg] = randPhrase
-        corrFile.write('%d.%s\n' % (idx, e))
-
-        idx += 1
-
-
-def encodeEventsFilesRealCorrupted(out_dir='./training', real='events_real.txt', corrupted='events_corrupted.txt'):
-  """
-  Creates two files in folder encoded/
-  """
-  print "Getting dictionaries..."
-  dicts = loadIndexedDictionaries()
-  subjects_by_id = dicts['subjects_by_id']
-  #subjects_by_str = dicts['subjects_by_str']
-  actions_by_id = dicts['actions_by_id']
-  #actions_by_str = dicts['actions_by_str']
-  predicates_by_id = dicts['predicates_by_id']
-  #predicates_by_str = dicts['predicates_by_str']
-
-  path = os.path.abspath(out_dir)
-  realPath = os.path.join(path, real)
-  corrPath = os.path.join(path, corrupted)
-
-  batchPaths = getBatchPaths('all')
-
-  # just get the events, not dictionaries
-  events = loadEventsFromBatchFiles(batchPaths, return_dicts=False)
-  del batchPaths
-
-  idx = 0
-  for e in events:
-
-    try:
+    idx = 0
+    for e in events:
       if (idx % 10000 == 0):
         print "Finished event %d/%d." % (idx, len(events))
-      
-      #s_id = subjects_by_str[e[0]]
-      #a_id = actions_by_str[e[1]]
-      #p_id = predicates_by_str[e[2]]
 
-      with open(realPath, 'w') as realFile:
-        realFile.write('%d.%d,%d,%d\n' % (idx, s_id, a_id, p_id))
-      
+      realFile.write('%d.%s\n' % (idx, e))
+
+      # replace a random arg in the event triple
       randomArg = random.randint(0, 2)
       if (randomArg == 0):
-        s_id, srand = getRandom(subjects_by_id)
+        randId, randPhrase = getRandom(subjects_by_id)
       elif (randomArg == 1):
-        a_id, arand = getRandom(actions_by_id)
+        randId, randPhrase = getRandom(actions_by_id)
       else:
-        p_id, prand = getRandom(predicates_by_id)
+        randId, randPhrase = getRandom(predicates_by_id)
+      e[randomArg] = randPhrase
 
-      with open(corrPath, 'w') as corrFile:
-        corrFile.write('%d.%d,%d,%d\n' % (idx, s_id, a_id, p_id))
+      corrFile.write('%d.%s\n' % (idx, e))
 
       idx += 1
 
-    except:
-      print "Error on event:", e
+    corrFile.close()
+    realFile.close()
 
 def getBatchPaths(ids, dir='./events', name_format='batch_*.txt'):
   path = os.path.join(os.path.abspath(dir), name_format)
