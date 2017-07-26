@@ -14,8 +14,11 @@ def checkExists(word, model):
   Convenience function to check if a given word is in a word embedding model.
   model = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
   """
-  if len(model[word]) > 0:
-    return True
+  if word in model:
+    if len(model[word]) > 0:
+      return True
+    else:
+      return False
   else:
     return False
 
@@ -439,6 +442,75 @@ def getEventsFromCorpus():
                   '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
   extractEvents(corpus_paths, start_batch = 0)
 
+def averageEmbedding(string, model, word_embedding_size=300):
+  avgEmbed = np.zeros(word_embedding_size)
+  words = string.split(' ')
+  valid_ctr = 0
+  for w in words:
+    if (checkExists(w, model) == True):
+      valid_ctr += 1
+      avgEmbed = np.add(avgEmbed, model[w])
+  if valid_ctr > 0:
+    return avgEmbed / valid_ctr
+  else:
+    print "Error: Could not embed any words in phrase:", string
+    return False
+
+def getTrainingTensor(num_examples, word_embedding_size=300):
+  """
+  Constructs an nx6xd tensor where
+  n: number of training examples
+  6: these six rows are actor, action, object, corrupt_actor, corrupt_action, corrupt_object
+  d: the dimension of word embeddings (Google's pretrained model has d=300)
+
+  Will keep getting batch files until num_examples have been found.
+  """
+  wordEmbeddingModel = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
+  print "Loaded word embedding model."
+
+  real_dir = './real'
+  corr_dir = './corrupt'
+  real_path = os.path.abspath(real_dir)
+  corr_path = os.path.abspath(corr_dir)
+  real_files = getTextFilesInDirectory(real_path, recursive=False)
+  corr_files = getTextFilesInDirectory(corr_path, recursive=False)
+  print "Found text files from directories."
+  real_files.sort()
+  corr_files.sort()
+  print "Sorted text files by batch number."
+
+  trainTensor = np.zeros((num_examples, 6, word_embedding_size))
+
+  ctr = 0
+  for b in range(len(real_files)):
+    realTriples = getEventTriplesFromBatch(real_files[b])
+    corrTriples = getEventTriplesFromBatch(corr_files[b])
+
+    for t in range(len(realTriples)):
+      row0 = averageEmbedding(realTriples[t][0], wordEmbeddingModel)
+      row1 = averageEmbedding(realTriples[t][1], wordEmbeddingModel)
+      row2 = averageEmbedding(realTriples[t][2], wordEmbeddingModel)
+      row3 = averageEmbedding(corrTriples[t][0], wordEmbeddingModel)
+      row4 = averageEmbedding(corrTriples[t][1], wordEmbeddingModel)
+      row5 = averageEmbedding(corrTriples[t][2], wordEmbeddingModel)
+
+      for row in [row0, row1, row2, row3, row4, row5]:
+        if type(row) is not np.ndarray:
+          print "Skipping event due to unknown words."
+          continue
+
+      trainTensor[ctr][0] = row0
+      trainTensor[ctr][1] = row1
+      trainTensor[ctr][2] = row2
+      trainTensor[ctr][3] = row3
+      trainTensor[ctr][4] = row4
+      trainTensor[ctr][5] = row5
+      ctr += 1
+      if (ctr == num_examples):
+        return trainTensor
+
+  return False
+
 def main():
   # rel_dir = './events/batch_1.txt'
   # path = os.path.abspath(rel_dir)
@@ -451,7 +523,9 @@ def main():
   #subjects_raw, actions_raw, predicates_raw = loadRawDictionaries()
   #writeIndexedDictionariesToDisk(subjects_raw, actions_raw, predicates_raw)
   #encodeEventsFilesRealCorrupted()
-  writeCorruptEvents()
+  tensor = getTrainingTensor(100)
+  print tensor[0]
+  print tensor.shape
 
 if __name__ == '__main__':
   main()
