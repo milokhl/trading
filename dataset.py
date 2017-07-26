@@ -9,9 +9,11 @@ import random
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Stanford-OpenIE-Python'))
 from wrapper import stanford_ie, extract_events_filelist
 
-# model = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
-
 def checkExists(word, model):
+  """
+  Convenience function to check if a given word is in a word embedding model.
+  model = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
+  """
   if len(model[word]) > 0:
     return True
   else:
@@ -19,7 +21,7 @@ def checkExists(word, model):
 
 def getTextFilesInDirectory(dir, recursive = True, ignore = ['.', ',', '..']):
   """
-  Recursively walks in a top-down manner, storing all paths to text files.
+  Recursively walks through a directory, storing all paths to text files.
   """
   res = []
   dir = os.path.abspath(dir)
@@ -33,11 +35,11 @@ def getTextFilesInDirectory(dir, recursive = True, ignore = ['.', ',', '..']):
         res.append(new)
   return res
 
-def getEventTriplesFromBatch(batch_file):
+def getEventTriplesFromBatch(batch_file, verbose=False):
   """
   Expects batch_file in format:
   47.['South African Mine', ' Cut', ' Exports']
-  Output: [['South African Mine', 'Cut', 'Exports'], ['Elizabeth Amon', 'is in', 'Brooklyn'] .... ]
+  Output: [['South African Mine', 'Cut', 'Exports'], ['Elizabeth Amon', 'is in', 'Brooklyn'] ... ]
   """
   triples = []
   unparsable_lines = 0
@@ -54,13 +56,17 @@ def getEventTriplesFromBatch(batch_file):
             triple[i] = triple[i][1:]
         triples.append(triple)
       except:
-        print "Line caused exception:", line
+        if verbose:
+          print "Line caused exception:", line
         unparsable_lines += 1
-  print "Unparsable lines:", unparsable_lines
+  if verbose:
+    print "Unparsable lines:", unparsable_lines
   return triples
 
 def loadEventsFromBatchFiles(batch_file_list, return_dicts=True):
   """
+  return_dicts: return dictionaries created from the batch files
+  Otherwise returns just the events.
   """
   start = time.time()
   subjects = {}
@@ -214,6 +220,9 @@ def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_
 
 
 def loadRawDictionaries(dump_dir = './dicts', how='json'):
+  """
+  Loads dictionaries subjects.json, actions.json, and predicates.json
+  """
   dump_dir = os.path.abspath(dump_dir)
 
   if (how == 'json'):
@@ -242,6 +251,11 @@ def loadRawDictionaries(dump_dir = './dicts', how='json'):
 
 def loadIndexedDictionaries(dump_dir = './dicts', how='json',
     types=['subjects_by_id', 'subjects_by_str', 'actions_by_id', 'actions_by_str', 'predicates_by_id', 'predicates_by_str']):
+  """
+  Loads a customizable list of dictionaries.
+  By default will load all dictionaries, which can take
+  up a large amount of memory (12-16GB)
+  """
   dump_dir = os.path.abspath(dump_dir)
 
   if (how == 'json'):
@@ -330,6 +344,9 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
 
 def getRandom(dict_by_id):
   """
+  Given a dictionary that is indexed by id, will select one of the dictionaries
+  key-value pairs uniformly at random.
+
   dict_by_id: a dictionary with uid's as keys and phrases as values
   """
   randId = str(random.randint(0, len(dict_by_id)-1))
@@ -396,6 +413,10 @@ def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffi
     realFile.close()
 
 def getBatchPaths(ids, dir='./events', name_format='batch_*.txt'):
+  """
+  Returns all of the batch files that match the given name_format and dir.
+  ids: A list of batch file numbers, or 'all'
+  """
   path = os.path.join(os.path.abspath(dir), name_format)
 
   if (ids == 'all'):
@@ -413,7 +434,7 @@ def getEventsFromCorpus():
   - Each batch file contains an event on each line in the format:
     47.['South African Mine', ' Cut', ' Exports']
   """
-  print ("Starting...")
+  print ("Starting getEventsFromCorpus...")
   corpus_paths = ['/home/milo/envs/trading/datasets/financial-news-dataset-master/20061020_20131126_bloomberg_news',
                   '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
   extractEvents(corpus_paths, start_batch = 0)
