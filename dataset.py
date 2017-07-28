@@ -281,7 +281,7 @@ def loadIndexedDictionaries(dump_dir = './dicts', how='json',
  
 
 def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt',
-                  out_dir = './events', start_batch = 0, verbose=True):
+                  out_dir = './events', start_batch = 0, verbose=False):
   """
   Extracts events from articles in a directory and writes them to disk.
   corpus_paths - directory to be searched recursively for articles
@@ -603,14 +603,6 @@ def getEventsFromCorpus(path):
                   '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
   extractEvents(corpus_paths, start_batch = 0)
 
-  # rel_dir = './events/batch_1.txt'
-  # path = os.path.abspath(rel_dir)
-  # triples = getTriplesFromBatch(path)
-  # print triples
-  #encodeEventsFilesRealCorrupted()
-  # wordEmbeddingModel = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
-  # res = writeTrainingTensors(wordEmbeddingModel)
-
 def buildDictionaries(verbose=False):
   paths = getBatchPaths('all')
   s, a, p = loadEventsFromBatchFiles(paths)
@@ -623,7 +615,7 @@ if __name__ == '__main__':
   parser.add_argument('--corpus', type=str, help="The directory that will be searched recursively for articles.")
   parser.add_argument('--verbose', help="Prints extra status updates and debug messages.", action="store_true")
   parser.add_argument('--event_batch_size', default=400, type=int, help = "Number of articles per event batch.")
-  parser.add_argument('--tensor_batch_size', default=32, type=int, help = "The size of a mini batch for training.")
+  parser.add_argument('--batch_size', default=32, type=int, help = "The size of a mini batch for training.")
   parser.add_argument('--batches', default=10000, type=int, help = "Specify the number of tensor input batches.")
   parser.add_argument('--model', default='../datasets/googlenews-vectors-negative300.bin', type=str, help = "Specify the path to the word embedding model.")
   parser.add_argument('--wordsize', default=300, type=int, help = "Specify the size of embedded word vectors.")
@@ -631,12 +623,10 @@ if __name__ == '__main__':
 
   if (args.function == 'extract'):
     if args.corpus:
-      if args.batch_size:
-        extractEvents([os.path.abspath(args.corpus)], start_batch=0, batch_size=args.batch_size, verbose=args.verbose)
-      else:
-        extractEvents([os.path.abspath(args.corpus)], start_batch=0, verbose=args.verbose)
+      if args.event_batch_size:
+        extractEvents([os.path.abspath(args.corpus)], start_batch=0, batch_size=args.event_batch_size, verbose=args.verbose)
     else:
-      print "Error: invalid or no corpus path provided."
+      print "Error: invalid path or no corpus path provided."
 
   elif (args.function == 'build_dict'):
     buildDictionaries(verbose=args.verbose)
@@ -646,7 +636,7 @@ if __name__ == '__main__':
 
   elif (args.function == 'write_tensors'):
     wordEmbeddingModel = KeyedVectors.load_word2vec_format(args.model, binary=True)
-    writeTrainingTensors(wordEmbeddingModel, num_batches=args.batches, word_embedding_size=args.wordsize, debug=args.verbose)
+    writeTrainingTensors(wordEmbeddingModel, num_batches=args.batches, word_embedding_size=args.wordsize, batch_size = args.batch_size, debug=args.verbose)
 
   else:
     "Command not recognized. Try python dataset.py -h for help."
