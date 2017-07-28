@@ -59,11 +59,9 @@ def getEventTriplesFromBatch(batch_file, verbose=False):
             triple[i] = triple[i][1:]
         triples.append(triple)
       except:
-        if verbose:
-          print "Line caused exception:", line
+        if verbose: print "Line caused exception:", line
         unparsable_lines += 1
-  if verbose:
-    print "Unparsable lines:", unparsable_lines
+  if verbose: print "Unparsable lines:", unparsable_lines
   return triples
 
 def loadEventsFromBatchFiles(batch_file_list, return_dicts=True):
@@ -442,7 +440,7 @@ def getEventsFromCorpus():
                   '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
   extractEvents(corpus_paths, start_batch = 0)
 
-def averageEmbedding(string, model, word_embedding_size=300):
+def averageEmbedding(string, model, word_embedding_size=300, debug=False):
   avgEmbed = np.zeros(word_embedding_size)
   words = string.split(' ')
   valid_ctr = 0
@@ -453,10 +451,10 @@ def averageEmbedding(string, model, word_embedding_size=300):
   if valid_ctr > 0:
     return avgEmbed / valid_ctr
   else:
-    print "Error: Could not embed any words in phrase:", string
+    if debug: print "Error: Could not embed any words in phrase:", string
     return False
 
-def getTrainingTensor(num_examples, word_embedding_size=300):
+def getTrainingTensor(num_examples, wordEmbeddingModel, word_embedding_size=300):
   """
   Constructs an nx6xd tensor where
   n: number of training examples
@@ -465,9 +463,6 @@ def getTrainingTensor(num_examples, word_embedding_size=300):
 
   Will keep getting batch files until num_examples have been found.
   """
-  wordEmbeddingModel = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
-  print "Loaded word embedding model."
-
   real_dir = './real'
   corr_dir = './corrupt'
   real_path = os.path.abspath(real_dir)
@@ -479,7 +474,7 @@ def getTrainingTensor(num_examples, word_embedding_size=300):
   corr_files.sort()
   print "Sorted text files by batch number."
 
-  trainTensor = np.zeros((num_examples, 6, word_embedding_size))
+  tensor = np.zeros((num_examples, 6, word_embedding_size))
 
   ctr = 0
   for b in range(len(real_files)):
@@ -499,17 +494,112 @@ def getTrainingTensor(num_examples, word_embedding_size=300):
           print "Skipping event due to unknown words."
           continue
 
-      trainTensor[ctr][0] = row0
-      trainTensor[ctr][1] = row1
-      trainTensor[ctr][2] = row2
-      trainTensor[ctr][3] = row3
-      trainTensor[ctr][4] = row4
-      trainTensor[ctr][5] = row5
+      tensor[ctr][0] = row0
+      tensor[ctr][1] = row1
+      tensor[ctr][2] = row2
+      tensor[ctr][3] = row3
+      tensor[ctr][4] = row4
+      tensor[ctr][5] = row5
       ctr += 1
       if (ctr == num_examples):
-        return trainTensor
+        return tensor
 
   return False
+
+def getRealCorruptPairs(real_dir = './real', corr_dir = './corrupt'):
+  """
+  Gets all of the real and corrupt files, pairs them, and returns as a list of tuples.
+  Return: [(real1, corr1), (real2, corr2), ...]
+  """
+  real_path = os.path.abspath(real_dir)
+  corr_path = os.path.abspath(corr_dir)
+  real_files = getTextFilesInDirectory(real_path, recursive=False)
+  corr_files = getTextFilesInDirectory(corr_path, recursive=False)
+  print "Found text files from directories."
+  real_files.sort()
+  corr_files.sort()
+  print "Sorted text files by batch number."
+
+  # sanity check
+  assert len(real_files) == len(corr_files), "Error: different number of real and corrupt files."
+
+  pairs = []
+  for i in range(len(real_files)):
+    pairs.append((real_files[i], corr_files[i]))
+  return pairs
+
+def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 32,
+                         word_embedding_size = 300, output_dir = './input_tensors',
+                         debug = False):
+  """
+  Construct an nx6xd tensors where
+  n: number of training examples in a batch (i.e 32)
+  6: these six rows are actor, action, object, corrupt_actor, corrupt_action, corrupt_object
+  d: the dimension of word embeddings (Google's pretrained model has d=300)
+
+  Will keep getting batch files until all tensors are written or it runs out of batch files.
+  """
+  print "---- Writing training tensors ----"
+  print "Batches:", num_batches
+  print "Batch Size:", batch_size
+  print "Word Embedding Size:", word_embedding_size
+  print "Output Dir:", output_dir
+
+  output_dir = os.path.abspath(output_dir)
+  if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+  # get pairs of (real, corrupt) filepaths
+  pairs = getRealCorruptPairs()
+  if debug: print "Got %d pairs of real/corrupt files." % len(pairs)
+
+  tensor = np.zeros((batch_size, 6, word_embedding_size))
+  ctr, tensor_ctr = 0, 0
+  for b in range(len(pairs)):
+    print "Using batch file #%d" % b
+    realTriples = getEventTriplesFromBatch(pairs[b][0])
+    corrTriples = getEventTriplesFromBatch(pairs[b][1])
+
+    # sanity check
+    assert len(realTriples) == len(corrTriples), "Error: Different number of real and corrupt triples."
+    if debug: print "Got %d triples from batch." % len(realTriples)
+
+    for t in range(len(realTriples)):
+      row0 = averageEmbedding(realTriples[t][0], wordEmbeddingModel)
+      row1 = averageEmbedding(realTriples[t][1], wordEmbeddingModel)
+      row2 = averageEmbedding(realTriples[t][2], wordEmbeddingModel)
+      row3 = averageEmbedding(corrTriples[t][0], wordEmbeddingModel)
+      row4 = averageEmbedding(corrTriples[t][1], wordEmbeddingModel)
+      row5 = averageEmbedding(corrTriples[t][2], wordEmbeddingModel)
+
+      # skip this event if any of the arguments is unknown to the word embedding model
+      for row in [row0, row1, row2, row3, row4, row5]:
+        if type(row) is not np.ndarray:
+          if debug: print "Skipping event due to unknown words."
+          continue
+
+      tensor[ctr][0] = row0
+      tensor[ctr][1] = row1
+      tensor[ctr][2] = row2
+      tensor[ctr][3] = row3
+      tensor[ctr][4] = row4
+      tensor[ctr][5] = row5
+      ctr += 1
+
+      # if a tensor is filled
+      if (ctr == batch_size):
+        ctr = 0
+        filename = os.path.join(output_dir, 'tensor_%d.npy' % tensor_ctr)
+        np.save(filename, tensor) # save to file
+        print "Saved %s to disk." % filename
+        tensor = np.zeros((batch_size, 6, word_embedding_size)) # reset tensor
+        tensor_ctr += 1
+
+        if (tensor_ctr == num_batches and num_batches != 'all'):
+          print "Finished %d batches. Complete." % tensor_ctr
+          return True
+
+  return True
 
 def main():
   # rel_dir = './events/batch_1.txt'
@@ -523,9 +613,8 @@ def main():
   #subjects_raw, actions_raw, predicates_raw = loadRawDictionaries()
   #writeIndexedDictionariesToDisk(subjects_raw, actions_raw, predicates_raw)
   #encodeEventsFilesRealCorrupted()
-  tensor = getTrainingTensor(100)
-  print tensor[0]
-  print tensor.shape
+  wordEmbeddingModel = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
+  res = writeTrainingTensors(wordEmbeddingModel)
 
 if __name__ == '__main__':
   main()
