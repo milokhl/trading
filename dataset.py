@@ -5,6 +5,7 @@ import sys, os
 import cPickle as pickle
 import json
 import random
+import argparse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Stanford-OpenIE-Python'))
 from wrapper import stanford_ie, extract_events_filelist
@@ -22,7 +23,7 @@ def checkExists(word, model):
   else:
     return False
 
-def getTextFilesInDirectory(dir, recursive = True, ignore = ['.', ',', '..']):
+def getTextFilesInDirectory(dir, recursive = True, ignore = ['.', ',', '..', 'README.md']):
   """
   Recursively walks through a directory, storing all paths to text files.
   """
@@ -144,7 +145,7 @@ def writeRawDictionariesToDisk(subject_dict, action_dict, predicate_dict, dump_d
     print "Error: serializer type not understood."
   print "Finished storing dictionaries to dump files."
 
-def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_dict_raw, dump_dir = './dicts', how='json'):
+def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_dict_raw, dump_dir = './dicts', how='json', verbose=True):
   """
   Stores subject, action, predicate dictionaries to disk where each item is:
   id (integer): item (string)
@@ -280,7 +281,7 @@ def loadIndexedDictionaries(dump_dir = './dicts', how='json',
  
 
 def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt',
-          out_dir = './events', start_batch = 0):
+                  out_dir = './events', start_batch = 0, verbose=True):
   """
   Extracts events from articles in a directory and writes them to disk.
   corpus_paths - directory to be searched recursively for articles
@@ -314,12 +315,12 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
 
       print "[INFO] Writing event batch #%d. %d/%d articles done." % (batch_num, ctr, len(article_paths))
       # get event tuples from the files listed currently and write them to a batch file
-      print "[INFO] Stanford IE is extracting event triples..."
-      events = extract_events_filelist(filelist_path, verbose = True, max_entailments_per_clause = 100)
+      if verbose: print "[INFO] Stanford IE is extracting event triples..."
+      events = extract_events_filelist(filelist_path, verbose = verbose, max_entailments_per_clause = 100)
       out_path = os.path.join(out_dir, 'batch_%d.txt' % batch_num)
       e_ctr = 0
       with open(out_path, 'w') as out_file:
-        print "[INFO] Writing event triples to batch file."
+        if verbose: print "[INFO] Writing event triples to batch file."
         for e in events:
           out_file.write("%d.%s\n" % (e_ctr, str(e)))
           e_ctr += 1
@@ -355,7 +356,7 @@ def getRandom(dict_by_id):
 
 def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffix='.txt',
                        corr_name_format='corrupt_*.txt', real_dir='./real',
-                       real_name_format='real_*.txt'):
+                       real_name_format='real_*.txt', verbose=True):
   """
   For each batch file, writes a corrupted batch file where one of the
   three arguments of the triple is replaced randomly from the corresponding dictionary.
@@ -427,18 +428,6 @@ def getBatchPaths(ids, dir='./events', name_format='batch_*.txt'):
     for i in ids:
       paths.append(path.replace("*", str(i)))
   return paths
-
-def getEventsFromCorpus():
-  """
-  Gets all events from articles located in the corpus, and writes these events to disk.
-  - Events are written into batch files, i.e events/batch_64.txt
-  - Each batch file contains an event on each line in the format:
-    47.['South African Mine', ' Cut', ' Exports']
-  """
-  print ("Starting getEventsFromCorpus...")
-  corpus_paths = ['/home/milo/envs/trading/datasets/financial-news-dataset-master/20061020_20131126_bloomberg_news',
-                  '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
-  extractEvents(corpus_paths, start_batch = 0)
 
 def averageEmbedding(string, model, word_embedding_size=300, debug=False):
   avgEmbed = np.zeros(word_embedding_size)
@@ -601,20 +590,63 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
 
   return True
 
-def main():
+
+def getEventsFromCorpus(path):
+  """
+  Gets all events from articles located in the corpus, and writes these events to disk.
+  - Events are written into batch files, i.e events/batch_64.txt
+  - Each batch file contains an event on each line in the format:
+    47.['South African Mine', ' Cut', ' Exports']
+  """
+  print ("Starting getEventsFromCorpus...")
+  corpus_paths = ['/home/milo/envs/trading/datasets/financial-news-dataset-master/20061020_20131126_bloomberg_news',
+                  '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
+  extractEvents(corpus_paths, start_batch = 0)
+
   # rel_dir = './events/batch_1.txt'
   # path = os.path.abspath(rel_dir)
   # triples = getTriplesFromBatch(path)
   # print triples
-  #paths = getBatchPaths('all')
-  #print "Found paths:", len(paths)
-  #s, a, p = loadEventsFromBatchFiles(paths)
-  # writeDictionariesToDisk(s, a, p, how='json')
-  #subjects_raw, actions_raw, predicates_raw = loadRawDictionaries()
-  #writeIndexedDictionariesToDisk(subjects_raw, actions_raw, predicates_raw)
   #encodeEventsFilesRealCorrupted()
-  wordEmbeddingModel = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
-  res = writeTrainingTensors(wordEmbeddingModel)
+  # wordEmbeddingModel = KeyedVectors.load_word2vec_format('../datasets/googlenews-vectors-negative300.bin', binary=True)
+  # res = writeTrainingTensors(wordEmbeddingModel)
+
+def buildDictionaries(verbose=False):
+  paths = getBatchPaths('all')
+  s, a, p = loadEventsFromBatchFiles(paths)
+  writeDictionariesToDisk(s, a, p, how='json', verbose=verbose)
+  writeIndexedDictionariesToDisk(s, a, p, verbose=verbose)
 
 if __name__ == '__main__':
-  main()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('function', type=str, help="Function: extract | build_dict | write_pairs | write_tensors")
+  parser.add_argument('--corpus', type=str, help="The directory that will be searched recursively for articles.")
+  parser.add_argument('--verbose', help="Prints extra status updates and debug messages.", action="store_true")
+  parser.add_argument('--event_batch_size', default=400, type=int, help = "Number of articles per event batch.")
+  parser.add_argument('--tensor_batch_size', default=32, type=int, help = "The size of a mini batch for training.")
+  parser.add_argument('--batches', default=10000, type=int, help = "Specify the number of tensor input batches.")
+  parser.add_argument('--model', default='../datasets/googlenews-vectors-negative300.bin', type=str, help = "Specify the path to the word embedding model.")
+  parser.add_argument('--wordsize', default=300, type=int, help = "Specify the size of embedded word vectors.")
+  args = parser.parse_args()
+
+  if (args.function == 'extract'):
+    if args.corpus:
+      if args.batch_size:
+        extractEvents([os.path.abspath(args.corpus)], start_batch=0, batch_size=args.batch_size, verbose=args.verbose)
+      else:
+        extractEvents([os.path.abspath(args.corpus)], start_batch=0, verbose=args.verbose)
+    else:
+      print "Error: invalid or no corpus path provided."
+
+  elif (args.function == 'build_dict'):
+    buildDictionaries(verbose=args.verbose)
+
+  elif (args.function == 'write_pairs'):
+    writeCorruptEvents(verbose=args.verbose)
+
+  elif (args.function == 'write_tensors'):
+    wordEmbeddingModel = KeyedVectors.load_word2vec_format(args.model, binary=True)
+    writeTrainingTensors(wordEmbeddingModel, num_batches=args.batches, word_embedding_size=args.wordsize, debug=args.verbose)
+
+  else:
+    "Command not recognized. Try python dataset.py -h for help."
