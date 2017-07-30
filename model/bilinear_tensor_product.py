@@ -5,13 +5,16 @@ import numpy as np
 
 class BilinearTensorProduct(Layer):
 
-  def __init__(self, output_dim, input_dim=300, **kwargs):
+  def __init__(self, output_dim, input_dim=None, **kwargs):
     """
     @param output_dim : size of the output vector
     @param input_dim : size of the word embedding input vector
     """
     self.output_dim = output_dim # k
     self.input_dim = input_dim # d
+
+    if self.input_dim is None:
+        raise Exception("Error: must specify an input_dim for BilinearTensorProduct Layer")
     super(BilinearTensorProduct, self).__init__(**kwargs)
 
   def build(self, input_shape):
@@ -19,11 +22,9 @@ class BilinearTensorProduct(Layer):
     @param input_shape : Should be (batch_size, 2, d)
     where d is the length of word embedding vectors
     """
-    # assert self.input_dim == input_shape[2], "Error: input_dim does not match input_shape[2]"
     k = self.output_dim
     d = self.input_dim
-    # print "Input shape:", input_shape
-    # self.batch_size = input_shape[0]
+
     initializer = initializers.RandomNormal(mean=0.0, stddev=1, seed=None)
 
     # Tensor weights
@@ -67,7 +68,7 @@ class BilinearTensorProduct(Layer):
     for i in range(k)[1:]:
       bilinear_tensor_product.append(K.sum((V2 * K.dot(V1, self.T[i])) + self.b, axis=1))
 
-    result = K.tanh(feedforward_product + bilinear_tensor_product)
+    result = K.tanh(K.reshape(K.concatenate(bilinear_tensor_product, axis=0), (self.batch_size, k)) + feedforward_product)
     return result
 
   def compute_output_shape(self, input_shape):
