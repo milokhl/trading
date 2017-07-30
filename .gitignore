@@ -1,2 +1,18 @@
 # ignore anything with underscore before it
 _*
+
+# ignore any .zip files
+*.zip
+
+# ignore any .jar files
+*.jar
+
+# ignore any .pyc files
+*.pyc
+
+# ignore any large folders
+dicts/
+events/
+input_tensors/
+real/
+corrupt/
