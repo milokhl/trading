@@ -10,14 +10,17 @@ import numpy as np
 import tensorflow as tf
 
 def contrastive_max_margin_loss(y_true, y_pred):
-	"""
-	@param y_true : a size 2 vector containing [real_score, corrupt_score]
-	"""
-	loss = tf.maximum(0.0, 1 + tf.subtract(y_pred[:,1:], y_pred[:,0:])) # right - left
+	# why is loss always 1?
+	assert y_pred[:,1:] != y_pred[:,:1]
+	loss = tf.maximum(0.0, 1 + tf.subtract(y_pred[:,1:], y_pred[:,:1])) # right - left
+	print "Loss shape:", loss.shape
 	return loss
 
+def avg_cmm_loss(y_true, y_pred):
+	loss = tf.maximum(0.0, 1 + tf.subtract(y_pred[:,1:], y_pred[:,:1])) # right - left
+	return K.mean(loss)
 
-def confusion(y_true, y_pred):
+def batch_correct_count(y_true, y_pred):
 	"""
 	Simply returns -1 if the corrupt tuple scores better than the real tuple.
 	else returns 0
@@ -33,9 +36,8 @@ def loadData(num_batches):
 	where n is the number of training examples
 	and d is the dimension of word embedding vectors
 	"""
-	file_batch_shape = loadInputTensor(1).shape
-	data = np.zeros((file_batch_shape[0], num_batches*file_batch_shape[1], file_batch_shape[2]))
-	for i in range(num_batches):
+	data = loadInputTensor(1)
+	for i in range(num_batches)[1:]:
 		np.concatenate((data, loadInputTensor(i)), axis=1)
 	return data
 
@@ -84,7 +86,8 @@ model = Model(input=[subj_input, act_input, pred_input, subj_corr_input, act_cor
 							outputs=[output])
 
 model.compile(optimizer='sgd',
-              loss=contrastive_max_margin_loss)
+              loss=contrastive_max_margin_loss,
+              metrics=[avg_cmm_loss])
 
 model.fit([data[0], data[1], data[2], data[3], data[4], data[5]],
-					[np.ones((n, 2))], epochs=num_epochs, batch_size=batch_size)
+					[np.zeros((n, 2))], epochs=num_epochs, batch_size=batch_size)
