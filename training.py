@@ -11,9 +11,7 @@ import tensorflow as tf
 
 def contrastive_max_margin_loss(y_true, y_pred):
 	# why is loss always 1?
-	assert y_pred[:,1:] != y_pred[:,:1]
 	loss = tf.maximum(0.0, 1 + tf.subtract(y_pred[:,1:], y_pred[:,:1])) # right - left
-	print "Loss shape:", loss.shape
 	return loss
 
 def avg_cmm_loss(y_true, y_pred):
@@ -38,18 +36,22 @@ def loadData(num_batches):
 	"""
 	data = loadInputTensor(1)
 	for i in range(num_batches)[1:]:
-		np.concatenate((data, loadInputTensor(i)), axis=1)
+		data = np.concatenate((data, loadInputTensor(i)), axis=1)
 	return data
 
-data = loadData(20)
-
 # DEFINE CONSTANTS
+data = loadData(100)
 n = data.shape[1]
+d = 300
+k = 50
+l = 40
 batch_size = 16
 num_epochs = 50
-d = 300
-k = 40
-l = 20
+
+def printHyperParams():
+	print "n: %d d: %d k: %d l: %d batch_size: %d num_epochs: %d" % (n, d, k, l, batch_size, num_epochs)
+
+printHyperParams()
 
 subj_input = Input(shape=(d,), dtype='float32', name='subj_input')
 act_input = Input(shape=(d,), dtype='float32', name='act_input')
