@@ -609,6 +609,13 @@ def buildDictionaries(verbose=False):
   writeDictionariesToDisk(s, a, p, how='json', verbose=verbose)
   writeIndexedDictionariesToDisk(s, a, p, verbose=verbose)
 
+def loadInputTensor(num, name_format='tensor_*.npy', path='./input_tensors'):
+  path = os.path.abspath(path)
+  name = name_format.replace('*', str(num))
+  filepath = os.path.join(path, name)
+  tensor = np.load(filepath)
+  return tensor
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('function', type=str, help="Function: extract | build_dict | write_pairs | write_tensors")
