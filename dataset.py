@@ -521,7 +521,7 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
                          word_embedding_size = 300, output_dir = './input_tensors',
                          debug = False):
   """
-  Construct an nx6xd tensors where
+  Construct an 6xnxd tensors where
   n: number of training examples in a batch (i.e 32)
   6: these six rows are actor, action, object, corrupt_actor, corrupt_action, corrupt_object
   d: the dimension of word embeddings (Google's pretrained model has d=300)
@@ -542,7 +542,7 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
   pairs = getRealCorruptPairs()
   if debug: print "Got %d pairs of real/corrupt files." % len(pairs)
 
-  tensor = np.zeros((batch_size, 6, word_embedding_size))
+  tensor = np.zeros((6, batch_size, word_embedding_size))
   ctr, tensor_ctr = 0, 0
   for b in range(len(pairs)):
     print "Using batch file #%d" % b
@@ -567,12 +567,12 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
           if debug: print "Skipping event due to unknown words."
           continue
 
-      tensor[ctr][0] = row0
-      tensor[ctr][1] = row1
-      tensor[ctr][2] = row2
-      tensor[ctr][3] = row3
-      tensor[ctr][4] = row4
-      tensor[ctr][5] = row5
+      tensor[0][ctr] = row0
+      tensor[1][ctr] = row1
+      tensor[2][ctr] = row2
+      tensor[3][ctr] = row3
+      tensor[4][ctr] = row4
+      tensor[5][ctr] = row5
       ctr += 1
 
       # if a tensor is filled
@@ -581,7 +581,7 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
         filename = os.path.join(output_dir, 'tensor_%d.npy' % tensor_ctr)
         np.save(filename, tensor) # save to file
         print "Saved %s to disk." % filename
-        tensor = np.zeros((batch_size, 6, word_embedding_size)) # reset tensor
+        tensor = np.zeros((6, batch_size, word_embedding_size)) # reset tensor
         tensor_ctr += 1
 
         if (tensor_ctr == num_batches and num_batches != 'all'):

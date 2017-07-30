@@ -13,3 +13,4 @@ six==1.10.0
 smart-open
 urllib3
 wheel
+keras
