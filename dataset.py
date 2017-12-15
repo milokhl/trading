@@ -343,15 +343,20 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
   print("[INFO] Finished writing events to disk!")
   return True
 
-def getRandom(dict_by_id):
+def getRandom(dict_by_id, num_words=1):
   """
   Given a dictionary that is indexed by id, will select one of the dictionaries
   key-value pairs uniformly at random.
 
   dict_by_id: a dictionary with uid's as keys and phrases as values
   """
-  randId = str(random.randint(0, len(dict_by_id)-1))
-  return (randId, dict_by_id[randId])
+  rand_ids = []
+  words = []
+  for ii in range(num_words):
+    randId = str(random.randint(0, len(dict_by_id)-1))
+    rand_ids.append(randId)
+    words.append(dict_by_id[randId])
+  return (rand_ids, ' '.join(words))
 
 def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffix='.txt',
                        corr_name_format='corrupt_*.txt', real_dir='./real',
@@ -401,9 +406,9 @@ def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffi
       if (randomArg == 0):
         randId, randPhrase = getRandom(subjects_by_id)
       elif (randomArg == 1):
-        randId, randPhrase = getRandom(actions_by_id)
+        randIds, randPhrase = getRandom(actions_by_id)
       else:
-        randId, randPhrase = getRandom(predicates_by_id)
+        randIds, randPhrase = getRandom(predicates_by_id)
       e[randomArg] = randPhrase
 
       corrFile.write('%d.%s\n' % (idx, e))

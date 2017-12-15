@@ -9,7 +9,6 @@ import torch.optim as optim
 from pytorch.bilinear_tensor_layer import *
 
 class TestDatasetCorrespondence(unittest.TestCase):
-
   def setUp(self):
     real_dir = './real'
     corr_dir = './corrupt'
@@ -19,9 +18,11 @@ class TestDatasetCorrespondence(unittest.TestCase):
     self.corr_files = getTextFilesInDirectory(corr_path)
 
   def test_num_batches(self):
+    """ Tests that there are an equal number of real and corruped files. """
     self.assertEqual(len(self.real_files), len(self.corr_files))
 
   def test_num_events(self):
+    """ Tests that each real and corrupt file has the same number of lines. """
     self.real_files.sort()
     self.corr_files.sort()
     for i in range(len(self.real_files)):
@@ -34,6 +35,8 @@ class TestDatasetCorrespondence(unittest.TestCase):
       self.assertEqual(rlen, clen)
 
   def test_get_event_triples_from_batch(self):
+    """ Tests that randomly chosen real/corrupt batch files contain the same
+    number of triples. """
     self.real_files.sort()
     self.corr_files.sort()
     for trial in range(5):
@@ -45,6 +48,8 @@ class TestDatasetCorrespondence(unittest.TestCase):
       self.assertEqual(len(realTriples), len(corrTriples))
 
   def test_random_similarity(self):
+    """ Tests that randomly chosen real/corrupt triples only differ
+    by a single entry. """
     self.real_files.sort()
     self.corr_files.sort()
     for trial in range(10):
