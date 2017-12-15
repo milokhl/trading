@@ -72,15 +72,13 @@ class BilinearTensorLayer(torch.nn.Module):
         self.output_vec_dim = output_vec_dim
 
         # Set up tensor, linear, and bias weights.
-        self.tensor_weights = nn.Parameter(torch.Tensor(output_vec_dim, input_vec_dim, input_vec_dim))
-        self.linear_weights1 = nn.Parameter(torch.Tensor(output_vec_dim, input_vec_dim))
-        self.linear_weights2 = nn.Parameter(torch.Tensor(output_vec_dim, input_vec_dim))
-        self.bias_weights = nn.Parameter(torch.Tensor(output_vec_dim))
+        self.tensor_weights = torch.nn.Parameter(torch.Tensor(output_vec_dim, input_vec_dim, input_vec_dim))
+        self.linear_weights = torch.nn.Parameter(torch.Tensor(output_vec_dim, 2 * input_vec_dim))
+        self.bias_weights = torch.nn.Parameter(torch.Tensor(output_vec_dim))
 
         # Random weight initialization.
         self.tensor_weights.data.normal_(0.0, 1.0 / (input_vec_dim * input_vec_dim * output_vec_dim))
-        self.linear_weights1.data.normal_(0.0, 1.0 / (output_vec_dim * input_vec_dim))
-        self.linear_weights2.data.normal_(0.0, 1.0 / (output_vec_dim * input_vec_dim))
+        self.linear_weights.data.normal_(0.0, 1.0 / (output_vec_dim * 2 * input_vec_dim))
         self.bias_weights.data.fill_(0.0)
 
     def forward(self, vec1, vec2):
@@ -88,8 +86,7 @@ class BilinearTensorLayer(torch.nn.Module):
         bilinear = torch.matmul(torch.matmul(vec1, self.tensor_weights).squeeze(), vec2.t()).t()
 
         # Linear output.
-        linear1 = torch.matmul(self.linear_weights1, vec1.t()).t()
-        linear2 = torch.matmul(self.linear_weights2, vec2.t()).t()
+        linear = torch.matmul(self.linear_weights, torch.cat((vec1, vec2), 1).t()).t()
 
         # Add in the bias vector also.
-        return bilinear + linear1 + linear2 + self.bias_weights
+        return bilinear + linear + self.bias_weights
