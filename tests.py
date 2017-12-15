@@ -1,7 +1,7 @@
 import os, random, time, unittest
 import numpy as np
 
-from dataset import getTextFilesInDirectory, getEventTriplesFromBatch
+from dataset import getTextFilesInDirectory, getEventTriplesFromBatch, getRandom
 
 from torch.autograd import gradcheck, Variable
 import torch.nn as nn
@@ -62,6 +62,13 @@ class TestDatasetCorrespondence(unittest.TestCase):
       real = realTriples[rand]
       corr = corrTriples[rand]
       self.assertTrue(real[0]==corr[0] or real[1]==corr[1] or real[2]==corr[2])
+
+  def test_get_random(self):
+    word_dict = {'0': 'milo', '1': 'hello', '2': 'my', '3': 'name', '4': 'is'}
+    phrase = 'wtf is this test doing'
+    num_words = len(phrase.split(' '))
+    ids, corrupt_phrase = getRandom(word_dict, num_words=num_words)
+    self.assertEqual(len(ids), 5)
 
 class TestBilinearTensorLayer(unittest.TestCase):
   def test_01(self):
