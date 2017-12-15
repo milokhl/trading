@@ -49,7 +49,7 @@ class BilinearTensorProduct(Layer):
 
   def call(self, inputs):
     """
-    @param inputs : [vector 1 (d), vector 2(d)]
+    @param inputs : [vector 1 (length d), vector 2(length d)]
     """
     k = self.output_dim
     d = self.input_dim

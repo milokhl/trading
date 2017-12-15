@@ -1,6 +1,7 @@
 from keras import backend as K
 from keras.models import Model
 from keras.layers import Input, Dense, Concatenate
+from keras.optimizers import SGD
 
 from model.bilinear_tensor_product import BilinearTensorProduct
 
@@ -17,16 +18,6 @@ def contrastive_max_margin_loss(y_true, y_pred):
 def avg_cmm_loss(y_true, y_pred):
 	loss = tf.maximum(0.0, 1 + tf.subtract(y_pred[:,1:], y_pred[:,:1])) # right - left
 	return K.mean(loss)
-
-def batch_correct_count(y_true, y_pred):
-	"""
-	Simply returns -1 if the corrupt tuple scores better than the real tuple.
-	else returns 0
-	"""
-	if y_pred[0] < y_pred[1]:
-		return -1
-	else:
-		return 0
 
 def loadData(num_batches):
 	"""
@@ -45,12 +36,11 @@ n = data.shape[1]
 d = 300
 k = 50
 l = 40
-batch_size = 16
+batch_size = 32
 num_epochs = 50
 
 def printHyperParams():
 	print "n: %d d: %d k: %d l: %d batch_size: %d num_epochs: %d" % (n, d, k, l, batch_size, num_epochs)
-
 printHyperParams()
 
 subj_input = Input(shape=(d,), dtype='float32', name='subj_input')
@@ -84,12 +74,13 @@ corr_score = shared_linear(corr_embedding)
 # concatenate the 2 outputs into a single output
 output = Concatenate(axis=1, name='concat_output')([real_score, corr_score])
 
-model = Model(input=[subj_input, act_input, pred_input, subj_corr_input, act_corr_input, pred_corr_input],
+model = Model(inputs=[subj_input, act_input, pred_input, subj_corr_input, act_corr_input, pred_corr_input],
 							outputs=[output])
 
-model.compile(optimizer='sgd',
+optimizer = SGD(lr=0.01, momentum=0.0, decay=0.0, nesterov=False)
+model.compile(optimizer=optimizer,
               loss=contrastive_max_margin_loss,
               metrics=[avg_cmm_loss])
 
-model.fit([data[0], data[1], data[2], data[3], data[4], data[5]],
-					[np.zeros((n, 2))], epochs=num_epochs, batch_size=batch_size)
+model.fit(x=[data[0], data[1], data[2], data[3], data[4], data[5]],
+					y=[np.zeros((n, 2))], epochs=num_epochs, batch_size=batch_size)
