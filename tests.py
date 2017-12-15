@@ -1,11 +1,12 @@
-import unittest
-from dataset import getTextFilesInDirectory, getEventTriplesFromBatch
-import os
-import random
+import os, random, time, unittest
 import numpy as np
-import time
-import keras.backend as K
-from model.bilinear_tensor_product import BilinearTensorProduct
+
+from dataset import getTextFilesInDirectory, getEventTriplesFromBatch
+
+from torch.autograd import gradcheck, Variable
+import torch.nn as nn
+import torch.optim as optim
+from pytorch.bilinear_tensor_layer import *
 
 class TestDatasetCorrespondence(unittest.TestCase):
 
@@ -56,6 +57,23 @@ class TestDatasetCorrespondence(unittest.TestCase):
       real = realTriples[rand]
       corr = corrTriples[rand]
       self.assertTrue(real[0]==corr[0] or real[1]==corr[1] or real[2]==corr[2])
+
+class TestBilinearTensorLayer(unittest.TestCase):
+  def test_01(self):
+    n = 10
+    k = 8
+    module = BilinearTensorLayer(n, k)
+    criterion = nn.MSELoss()
+    optimizer = optim.SGD(module.parameters(), lr=0.001, momentum=0.9, nesterov=True)
+
+    vec1 = Variable(torch.FloatTensor(np.arange(1,n+1).reshape(1,n).astype(np.float32)))
+    vec2 = Variable(torch.FloatTensor(-1 * np.arange(1,n+1).reshape(1,n).astype(np.float32)))
+    target = Variable(torch.FloatTensor(np.ones(k).reshape(1,k).astype(np.float32)))
+
+    out = module(vec1, vec2)
+    loss = criterion(out, target)
+    loss.backward()
+    optimizer.step()
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,7 +2,7 @@ from gensim.models import KeyedVectors
 import numpy as np
 import time
 import sys, os
-import cPickle as pickle
+import pickle
 import json
 import random
 import argparse
@@ -60,9 +60,9 @@ def getEventTriplesFromBatch(batch_file, verbose=False):
             triple[i] = triple[i][1:]
         triples.append(triple)
       except:
-        if verbose: print "Line caused exception:", line
+        if verbose: print("Line caused exception:", line)
         unparsable_lines += 1
-  if verbose: print "Unparsable lines:", unparsable_lines
+  if verbose: print("Unparsable lines:", unparsable_lines)
   return triples
 
 def loadEventsFromBatchFiles(batch_file_list, return_dicts=True):
@@ -80,7 +80,7 @@ def loadEventsFromBatchFiles(batch_file_list, return_dicts=True):
   sCollisions, aCollisions, pCollisions = 0, 0, 0
   for batch_file in batch_file_list:
     ctr += 1
-    print "Loading batch %d/%d into memory." % (ctr, len(batch_file_list))
+    print("Loading batch %d/%d into memory." % (ctr, len(batch_file_list)))
     batch_file = os.path.abspath(batch_file)
     triples = getEventTriplesFromBatch(batch_file)
     events.extend(triples)
@@ -106,9 +106,9 @@ def loadEventsFromBatchFiles(batch_file_list, return_dicts=True):
           predicates[t[2]] = 1
 
   if (return_dicts):
-    print "\n Unique Subjects: %d Unique Actions: %d Unique Predicates: %d" % (len(subjects), len(actions), len(predicates))
-    print "\n Subject Collisions: %d Action Collisions: %d Predicate Collisions: %d" % (sCollisions, aCollisions, pCollisions)
-    print "Finished in %f secs." % (time.time() - start)
+    print("\n Unique Subjects: %d Unique Actions: %d Unique Predicates: %d" % (len(subjects), len(actions), len(predicates)))
+    print("\n Subject Collisions: %d Action Collisions: %d Predicate Collisions: %d" % (sCollisions, aCollisions, pCollisions))
+    print("Finished in %f secs." % (time.time() - start))
     return (subjects, actions, predicates)
   else:
     return events
@@ -123,27 +123,27 @@ def writeRawDictionariesToDisk(subject_dict, action_dict, predicate_dict, dump_d
     os.makedirs(dump_dir)
 
   if (how == 'pickle'):
-    print "Pickling subject dict..."
+    print("Pickling subject dict...")
     pickle.dump(subject_dict, open(os.path.join(dump_dir, 'subjects.p'), 'wb'))
-    print "Pickling action dict..."
+    print("Pickling action dict...")
     pickle.dump(action_dict, open(os.path.join(dump_dir, 'actions.p'), 'wb'))
-    print "Pickling predicate dict..."
+    print("Pickling predicate dict...")
     pickle.dump(predicate_dict, open(os.path.join(dump_dir, 'predicates.p'), 'wb'))
 
   elif (how == 'json'):
-    print "JSONing subject dict..."
+    print("JSONing subject dict...")
     with open(os.path.join(dump_dir, 'subjects.json'), 'w') as fp:
       json.dump(subject_dict, fp, indent=0)
-    print "JSONing action dict..."
+    print("JSONing action dict...")
     with open(os.path.join(dump_dir, 'actions.json'), 'w') as fp:
       json.dump(action_dict, fp, indent=0)
-    print "JSONing predicate dict..."
+    print("JSONing predicate dict...")
     with open(os.path.join(dump_dir, 'predicates.json'), 'w') as fp:
       json.dump(predicate_dict, fp, indent=0)
 
   else:
-    print "Error: serializer type not understood."
-  print "Finished storing dictionaries to dump files."
+    print("Error: serializer type not understood.")
+  print("Finished storing dictionaries to dump files.")
 
 def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_dict_raw, dump_dir = './dicts', how='json', verbose=True):
   """
@@ -171,7 +171,7 @@ def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_
     idx_subjects_by_str[s] = s_idx
     s_idx += 1
 
-  print "Dumping indexed subjects dictionaries..."
+  print("Dumping indexed subjects dictionaries...")
   if (how == 'pickle'):
     pickle.dump(idx_subjects_by_id, open(os.path.join(dump_dir, 'subjects_by_id.p'), 'wb'))
     pickle.dump(idx_subjects_by_str, open(os.path.join(dump_dir, 'subjects_by_str.p'), 'wb'))
@@ -189,7 +189,7 @@ def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_
     idx_actions_by_str[a] = a_idx
     a_idx += 1
 
-  print "Dumping indexed actions dictionaries..."
+  print("Dumping indexed actions dictionaries...")
   if (how == 'pickle'):
     pickle.dump(idx_actions_by_id, open(os.path.join(dump_dir, 'actions_by_id.p'), 'wb'))
     pickle.dump(idx_actions_by_str, open(os.path.join(dump_dir, 'actions_by_str.p'), 'wb'))
@@ -207,7 +207,7 @@ def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_
     idx_predicates_by_str[p] = p_idx
     p_idx += 1
 
-  print "Dumping indexed predicates dictionaries..."
+  print("Dumping indexed predicates dictionaries...")
   if (how == 'pickle'):
     pickle.dump(idx_predicates_by_id, open(os.path.join(dump_dir, 'predicates_by_id.p'), 'wb'))
     pickle.dump(idx_predicates_by_str, open(os.path.join(dump_dir, 'predicates_by_str.p'), 'wb'))
@@ -218,7 +218,7 @@ def writeIndexedDictionariesToDisk(subject_dict_raw, action_dict_raw, predicate_
       json.dump(idx_predicates_by_str, fp, indent=0)
   del idx_predicates_by_id, idx_predicates_by_str, predicate_dict_raw
 
-  print "Finished storing indexed dictionaries to dump files."
+  print("Finished storing indexed dictionaries to dump files.")
 
 
 def loadRawDictionaries(dump_dir = './dicts', how='json'):
@@ -230,25 +230,25 @@ def loadRawDictionaries(dump_dir = './dicts', how='json'):
   if (how == 'json'):
     with open(os.path.join(dump_dir, 'subjects.json'), 'r') as fp:
       subjects = json.load(fp)
-    print "Loaded subjects dictionary."
+    print("Loaded subjects dictionary.")
     with open(os.path.join(dump_dir, 'actions.json'), 'r') as fp:
       actions = json.load(fp)
-    print "Loaded actions dictionary."
+    print("Loaded actions dictionary.")
     with open(os.path.join(dump_dir, 'predicates.json'), 'r') as fp:
       predicates = json.load(fp)
-    print "Loaded predicates dictionary."
+    print("Loaded predicates dictionary.")
 
   elif (how == 'pickle'):
     subjects = pickle.load(os.path.join(dump_dir, 'subjects.p'), "rb")
-    print "Loaded subjects dictionary."
+    print("Loaded subjects dictionary.")
     actions = pickle.load(os.path.join(dump_dir, 'actions.p'), "rb")
-    print "Loaded actions dictionary."
+    print("Loaded actions dictionary.")
     predicates = pickle.load(os.path.join(dump_dir, 'predicates.p'), "rb")
-    print "Loaded predicates dictionary."
+    print("Loaded predicates dictionary.")
 
   else:
-    print "Error: serializer type not understood."
-  print "Finished loading dictionaries from dump."
+    print("Error: serializer type not understood.")
+  print("Finished loading dictionaries from dump.")
   return (subjects, actions, predicates)
 
 def loadIndexedDictionaries(dump_dir = './dicts', how='json',
@@ -265,19 +265,18 @@ def loadIndexedDictionaries(dump_dir = './dicts', how='json',
     for t in types:
       with open(os.path.join(dump_dir, '%s.json' % t), 'r') as fp:
         result_dicts[t] = json.load(fp)
-        print "Loaded %s.json." % t
+        print("Loaded %s.json." % t)
 
   elif (how == 'pickle'):
     for t in types:
       result_dicts[t] = pickle.load(os.path.join(dump_dir, '%s.p' % t), 'rb')
-      print "Loaded %s.p" % t
+      print("Loaded %s.p" % t)
 
   else:
-    print "Error: serializer type not understood."
+    print("Error: serializer type not understood.")
 
-  print "Finished loading dictionaries from dump."
+  print("Finished loading dictionaries from dump.")
   return result_dicts
-  # return (subjects_by_id, actions_by_id, predicates_by_id, subjects_by_str, actions_by_str, predicates_by_str)
  
 
 def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt',
@@ -291,10 +290,10 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
   """
   article_paths = []
   for cpath in corpus_paths:
-    print "[INFO] Extracting articles recursively from path:", cpath
+    print("[INFO] Extracting articles recursively from path:", cpath)
     article_paths.extend(getTextFilesInDirectory(cpath))
 
-  print "[INFO] Total articles found:", len(article_paths)
+  print("[INFO] Total articles found:", len(article_paths))
  
   filelist_path = os.path.abspath(filelist_path) # where article paths are stored (overwritten each batch)
   out_dir = os.path.abspath(out_dir) # a folder where batch files are written to
@@ -313,18 +312,18 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
       if (batch_num < start_batch):
         continue
 
-      print "[INFO] Writing event batch #%d. %d/%d articles done." % (batch_num, ctr, len(article_paths))
+      print("[INFO] Writing event batch #%d. %d/%d articles done." % (batch_num, ctr, len(article_paths)))
       # get event tuples from the files listed currently and write them to a batch file
-      if verbose: print "[INFO] Stanford IE is extracting event triples..."
+      if verbose: print("[INFO] Stanford IE is extracting event triples...")
       events = extract_events_filelist(filelist_path, verbose = verbose, max_entailments_per_clause = 100)
       out_path = os.path.join(out_dir, 'batch_%d.txt' % batch_num)
       e_ctr = 0
       with open(out_path, 'w') as out_file:
-        if verbose: print "[INFO] Writing event triples to batch file."
+        if verbose: print("[INFO] Writing event triples to batch file.")
         for e in events:
           out_file.write("%d.%s\n" % (e_ctr, str(e)))
           e_ctr += 1
-      print "[INFO] Finished batch in %f sec.\n -----" % (time.time() - batch_start)
+      print("[INFO] Finished batch in %f sec.\n -----" % (time.time() - batch_start))
 
       # now write latest article to the filelist, overwriting
       mode = 'w'
@@ -341,7 +340,7 @@ def extractEvents(corpus_paths, batch_size = 400, filelist_path = '_filelist.txt
 
     ctr += 1
 
-  print "[INFO] Finished writing events to disk!"
+  print("[INFO] Finished writing events to disk!")
   return True
 
 def getRandom(dict_by_id):
@@ -383,7 +382,7 @@ def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffi
     end = batchNum.find(event_suffix)
     batchNum = batchNum[:end]
     batchNum = int(batchNum)
-    print "Starting batch #%d." % batchNum 
+    print("Starting batch #%d." % batchNum)
 
     events = loadEventsFromBatchFiles([p], return_dicts=False)
 
@@ -393,7 +392,7 @@ def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffi
     idx = 0
     for e in events:
       if (idx % 10000 == 0):
-        print "Finished event %d/%d." % (idx, len(events))
+        print("Finished event %d/%d." % (idx, len(events)))
 
       realFile.write('%d.%s\n' % (idx, e))
 
@@ -440,7 +439,7 @@ def averageEmbedding(string, model, word_embedding_size=300, debug=False):
   if valid_ctr > 0:
     return avgEmbed / valid_ctr
   else:
-    if debug: print "Error: Could not embed any words in phrase:", string
+    if debug: print("Error: Could not embed any words in phrase:", string)
     return False
 
 def getTrainingTensor(num_examples, wordEmbeddingModel, word_embedding_size=300):
@@ -458,10 +457,10 @@ def getTrainingTensor(num_examples, wordEmbeddingModel, word_embedding_size=300)
   corr_path = os.path.abspath(corr_dir)
   real_files = getTextFilesInDirectory(real_path, recursive=False)
   corr_files = getTextFilesInDirectory(corr_path, recursive=False)
-  print "Found text files from directories."
+  print("Found text files from directories.")
   real_files.sort()
   corr_files.sort()
-  print "Sorted text files by batch number."
+  print("Sorted text files by batch number.")
 
   tensor = np.zeros((num_examples, 6, word_embedding_size))
 
@@ -480,7 +479,7 @@ def getTrainingTensor(num_examples, wordEmbeddingModel, word_embedding_size=300)
 
       for row in [row0, row1, row2, row3, row4, row5]:
         if type(row) is not np.ndarray:
-          print "Skipping event due to unknown words."
+          print("Skipping event due to unknown words.")
           continue
 
       tensor[ctr][0] = row0
@@ -504,10 +503,10 @@ def getRealCorruptPairs(real_dir = './real', corr_dir = './corrupt'):
   corr_path = os.path.abspath(corr_dir)
   real_files = getTextFilesInDirectory(real_path, recursive=False)
   corr_files = getTextFilesInDirectory(corr_path, recursive=False)
-  print "Found text files from directories."
+  print("Found text files from directories.")
   real_files.sort()
   corr_files.sort()
-  print "Sorted text files by batch number."
+  print("Sorted text files by batch number.")
 
   # sanity check
   assert len(real_files) == len(corr_files), "Error: different number of real and corrupt files."
@@ -528,11 +527,11 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
 
   Will keep getting batch files until all tensors are written or it runs out of batch files.
   """
-  print "---- Writing training tensors ----"
-  print "Batches:", num_batches
-  print "Batch Size:", batch_size
-  print "Word Embedding Size:", word_embedding_size
-  print "Output Dir:", output_dir
+  print("---- Writing training tensors ----")
+  print("Batches:", num_batches)
+  print("Batch Size:", batch_size)
+  print("Word Embedding Size:", word_embedding_size)
+  print("Output Dir:", output_dir)
 
   output_dir = os.path.abspath(output_dir)
   if not os.path.exists(output_dir):
@@ -540,18 +539,18 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
 
   # get pairs of (real, corrupt) filepaths
   pairs = getRealCorruptPairs()
-  if debug: print "Got %d pairs of real/corrupt files." % len(pairs)
+  if debug: print("Got %d pairs of real/corrupt files." % len(pairs))
 
   tensor = np.zeros((6, batch_size, word_embedding_size))
   ctr, tensor_ctr = 0, 0
   for b in range(len(pairs)):
-    print "Using batch file #%d" % b
+    print("Using batch file #%d" % b)
     realTriples = getEventTriplesFromBatch(pairs[b][0])
     corrTriples = getEventTriplesFromBatch(pairs[b][1])
 
     # sanity check
     assert len(realTriples) == len(corrTriples), "Error: Different number of real and corrupt triples."
-    if debug: print "Got %d triples from batch." % len(realTriples)
+    if debug: print("Got %d triples from batch." % len(realTriples))
 
     for t in range(len(realTriples)):
       row0 = averageEmbedding(realTriples[t][0], wordEmbeddingModel)
@@ -564,7 +563,7 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
       # skip this event if any of the arguments is unknown to the word embedding model
       for row in [row0, row1, row2, row3, row4, row5]:
         if type(row) is not np.ndarray:
-          if debug: print "Skipping event due to unknown words."
+          if debug: print("Skipping event due to unknown words.")
           continue
 
       tensor[0][ctr] = row0
@@ -580,12 +579,12 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
         ctr = 0
         filename = os.path.join(output_dir, 'tensor_%d.npy' % tensor_ctr)
         np.save(filename, tensor) # save to file
-        print "Saved %s to disk." % filename
+        print("Saved %s to disk." % filename)
         tensor = np.zeros((6, batch_size, word_embedding_size)) # reset tensor
         tensor_ctr += 1
 
         if (tensor_ctr == num_batches and num_batches != 'all'):
-          print "Finished %d batches. Complete." % tensor_ctr
+          print("Finished %d batches. Complete." % tensor_ctr)
           return True
 
   return True
@@ -598,7 +597,7 @@ def getEventsFromCorpus(path):
   - Each batch file contains an event on each line in the format:
     47.['South African Mine', ' Cut', ' Exports']
   """
-  print ("Starting getEventsFromCorpus...")
+  print("Starting getEventsFromCorpus...")
   corpus_paths = ['/home/milo/envs/trading/datasets/financial-news-dataset-master/20061020_20131126_bloomberg_news',
                   '/home/milo/envs/trading/datasets/financial-news-dataset-master/ReutersNews106521']
   extractEvents(corpus_paths, start_batch = 0)
@@ -633,7 +632,7 @@ if __name__ == '__main__':
       if args.event_batch_size:
         extractEvents([os.path.abspath(args.corpus)], start_batch=0, batch_size=args.event_batch_size, verbose=args.verbose)
     else:
-      print "Error: invalid path or no corpus path provided."
+      print("Error: invalid path or no corpus path provided.")
 
   elif (args.function == 'build_dict'):
     buildDictionaries(verbose=args.verbose)
@@ -646,4 +645,4 @@ if __name__ == '__main__':
     writeTrainingTensors(wordEmbeddingModel, num_batches=args.batches, word_embedding_size=args.wordsize, batch_size = args.batch_size, debug=args.verbose)
 
   else:
-    "Command not recognized. Try python dataset.py -h for help."
+    print("Command not recognized. Try python dataset.py -h for help.")
