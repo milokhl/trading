@@ -7,6 +7,7 @@ from torch.autograd import gradcheck, Variable
 import torch.nn as nn
 import torch.optim as optim
 from pytorch.bilinear_tensor_layer import *
+from pytorch.event_dataset import EventDataset
 
 class TestDatasetCorrespondence(unittest.TestCase):
   def setUp(self):
@@ -86,6 +87,26 @@ class TestBilinearTensorLayer(unittest.TestCase):
     loss = criterion(out, target)
     loss.backward()
     optimizer.step()
+
+class TestEventDataLoader(unittest.TestCase):
+  def test_01(self):
+    data = EventDataset(tensor_dir='input_tensors/', memory_limit=1e9)
+    length = len(data)
+    shape = data[0].shape
+    print('Length:', length)
+    print('Shape:', shape)
+
+    # Try to read all training examples sequentially.
+    item0 = data[0]
+    for iters in range(3):
+      for i in range(len(data)):
+        sample = data[i]
+        self.assertEqual(sample.shape, shape)
+
+    # Check that after replacing the cache many times, we still get the same thing
+    # when reading the 0th item.
+    self.assertTrue(np.array_equal(item0, data[0]))
+
 
 if __name__ == '__main__':
     unittest.main()

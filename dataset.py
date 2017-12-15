@@ -403,12 +403,13 @@ def writeCorruptEvents(corr_dir='./corrupt', event_prefix ='batch_', event_suffi
 
       # replace a random arg in the event triple
       randomArg = random.randint(0, 2)
+      num_words = len(e[randomArg].split(' '))
       if (randomArg == 0):
-        randId, randPhrase = getRandom(subjects_by_id)
+        randId, randPhrase = getRandom(subjects_by_id, num_words=num_words)
       elif (randomArg == 1):
-        randIds, randPhrase = getRandom(actions_by_id)
+        randIds, randPhrase = getRandom(actions_by_id, num_words=num_words)
       else:
-        randIds, randPhrase = getRandom(predicates_by_id)
+        randIds, randPhrase = getRandom(predicates_by_id, num_words=num_words)
       e[randomArg] = randPhrase
 
       corrFile.write('%d.%s\n' % (idx, e))
@@ -521,11 +522,11 @@ def getRealCorruptPairs(real_dir = './real', corr_dir = './corrupt'):
     pairs.append((real_files[i], corr_files[i]))
   return pairs
 
-def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 32,
+def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 2048,
                          word_embedding_size = 300, output_dir = './input_tensors',
                          debug = False):
   """
-  Construct an 6xnxd tensors where
+  Construct an nx6xd tensors where
   n: number of training examples in a batch (i.e 32)
   6: these six rows are actor, action, object, corrupt_actor, corrupt_action, corrupt_object
   d: the dimension of word embeddings (Google's pretrained model has d=300)
@@ -546,10 +547,12 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
   pairs = getRealCorruptPairs()
   if debug: print("Got %d pairs of real/corrupt files." % len(pairs))
 
-  tensor = np.zeros((6, batch_size, word_embedding_size))
+  # tensor = np.zeros((6, batch_size, word_embedding_size))
+  tensor = np.zeros((batch_size, 6, word_embedding_size))
+
   ctr, tensor_ctr = 0, 0
   for b in range(len(pairs)):
-    print("Using batch file #%d" % b)
+    print("Using batch file #%d / %d" % (b, len(pairs)))
     realTriples = getEventTriplesFromBatch(pairs[b][0])
     corrTriples = getEventTriplesFromBatch(pairs[b][1])
 
@@ -571,12 +574,12 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
           if debug: print("Skipping event due to unknown words.")
           continue
 
-      tensor[0][ctr] = row0
-      tensor[1][ctr] = row1
-      tensor[2][ctr] = row2
-      tensor[3][ctr] = row3
-      tensor[4][ctr] = row4
-      tensor[5][ctr] = row5
+      tensor[ctr][0] = row0
+      tensor[ctr][1] = row1
+      tensor[ctr][2] = row2
+      tensor[ctr][3] = row3
+      tensor[ctr][4] = row4
+      tensor[ctr][5] = row5
       ctr += 1
 
       # if a tensor is filled
@@ -585,7 +588,7 @@ def writeTrainingTensors(wordEmbeddingModel, num_batches = 20000, batch_size = 3
         filename = os.path.join(output_dir, 'tensor_%d.npy' % tensor_ctr)
         np.save(filename, tensor) # save to file
         print("Saved %s to disk." % filename)
-        tensor = np.zeros((6, batch_size, word_embedding_size)) # reset tensor
+        tensor = np.zeros((batch_size, 6, word_embedding_size)) # reset tensor
         tensor_ctr += 1
 
         if (tensor_ctr == num_batches and num_batches != 'all'):
