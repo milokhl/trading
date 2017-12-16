@@ -1,14 +1,23 @@
 from __future__ import print_function, division
 import os
 import torch
+from torch import FloatTensor
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
 class EventDataset(Dataset):
     def __init__(self, tensor_dir='input_tensors/', memory_limit=1e9):
         """
+        A dataset loader with caching to stay within memory limits.
+        Whenever an index outside of the cache is requested, the cache
+        is refilled.
+
         tensor_dir: directory containing .npy files
         memory_limit: how much memory in bytes can this dataset occupy?
+
+        Tips:
+        - with a pytorch dataset loader, only use 1 worker
+        - make sure that all files in the directory have same number of examples in them
         """
         self.tensor_dir = tensor_dir
         self.tensor_files = getTextFilesInDirectory(self.tensor_dir)
@@ -30,9 +39,15 @@ class EventDataset(Dataset):
         self.cache_high_idx = self.files_in_cache * self.file_batch_size - 1 # Index of the last example in the cache.
 
         self.fill_cache(0)
+        print('------- Initialized event dataset! ------- ')
+        print('# Files:', len(self.tensor_files))
+        print('# per file:', self.file_batch_size)
+        print('# Files resident:', self.files_in_cache)
+        print('# Items resident:', self.items_in_cache)
 
     def fill_cache(self, idx):
         """ Fills the cache starting with the lowest file that contains example idx. """
+        print('Refilling cache from:', idx)
         file_idx = idx // self.file_batch_size
 
         # Fully fill the cache, or stop once all files have been used up.
@@ -54,14 +69,11 @@ class EventDataset(Dataset):
         if idx > self.cache_high_idx or idx < self.cache_low_idx:
             self.fill_cache(idx)
         
-        return self.cache[idx % self.items_in_cache]
-
+        return FloatTensor(self.cache[idx % self.items_in_cache].astype(np.float32))
 
 
 def getTextFilesInDirectory(dir, recursive=False, ignore = ['.', ',', '..', 'README.md']):
-  """
-  Recursively walks through a directory, storing all absolute paths to text files.
-  """
+  """ Recursively walks through a directory, storing all absolute paths to text files. """
   res = []
   dir = os.path.abspath(dir)
   for file in os.listdir(dir):
