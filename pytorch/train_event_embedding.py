@@ -15,14 +15,21 @@ sys.path.append('../')
 from event_dataset import *
 from event_embedding_model import EventEmbedder
 
-LOAD_EPOCH = None # './epochs/epoch_7.pt'
-LOAD_EPOCH_NUM = 0
-INPUT_TENSOR_DIR = '../input_tensors/'
+LOAD_EPOCH = './epochs/epoch_12.pt'
+LOAD_EPOCH_NUM = 12
+EPOCH_DIR = './epochs/'
+INPUT_TENSOR_DIR_TRAIN = '../input_tensors/train/'
+INPUT_TENSOR_DIR_TEST = '../input_tensors/test/'
 
-BATCH_SIZE = 512
+BATCH_SIZE = 1024
 NUM_EPOCHS = 50
 
 if __name__ == "__main__":
+
+    # Create a directory for storing model checkpoints.
+    if not os.path.exists(EPOCH_DIR):
+        print('Creating epoch directory.')
+        os.mkdir(EPOCH_DIR)
 
     # Create the model.
     model = EventEmbedder(300, 50, 32)
@@ -47,20 +54,15 @@ if __name__ == "__main__":
 
     # Define the loss function.
     # http://pytorch.org/docs/0.1.12/_modules/torch/nn/modules/loss.html
-    lossFn = nn.MarginRankingLoss(size_average=True)
-
+    lossFn = nn.MarginRankingLoss(margin=0.5, size_average=True)
 
     def get_iterator(mode):
         """
         Returns an iterable DataLoader object.
         @param mode (bool) True for training mode, False for testing mode.
         """
-        if mode:
-            pass
-        else:
-            pass
-
-        dataset = EventDataset(tensor_dir=INPUT_TENSOR_DIR, memory_limit=2e9)
+        # Limit the dataset cache to 2GB.
+        dataset = EventDataset(tensor_dir=INPUT_TENSOR_DIR_TRAIN if mode else INPUT_TENSOR_DIR_TEST, memory_limit=2e9)
         return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=1)
 
 
@@ -80,8 +82,12 @@ if __name__ == "__main__":
         real_score, real_embed = model(O1, P, O2)
         corr_score, corr_embed = model(O1_c, P_c, O2_c)
 
+        # print(real_score.size(), corr_score.size())
+
         # Argument of 1 means that real_score should be higher than corr_score.
-        loss = lossFn(real_score, corr_score, Variable(torch.ones(1, real_score.size()[0])).cuda())
+        # Make sure that to have n x 1!!!
+        loss = lossFn(real_score, corr_score, Variable(torch.ones(real_score.size()[0]), 0).cuda())
+        # print('Real score: %f Corr score: %f Loss: %f' % (torch.mean(real_score).data[0], torch.mean(corr_score).data[0], loss.data[0]))
         return (loss, (real_score, corr_score))
 
     # Called before the start of a training or validation epoch.
@@ -104,6 +110,7 @@ if __name__ == "__main__":
     # Called at the start of each new epoch.
     def on_start_epoch(state):
         reset_meters()
+        train_loss_logger = VisdomPlotLogger('line', opts={'title': 'Train Loss (epoch #%d)' % state['epoch']})
         state['iterator'] = tqdm(state['iterator'])
 
 
@@ -112,9 +119,9 @@ if __name__ == "__main__":
         reset_meters()
 
         # Validate the model after every training epoch.
+        print('Finished epoch, running on test set.')
         engine.test(processor, get_iterator(False))
         test_loss_logger.log(state['epoch'], meter_loss.value()[0])
-
         print('[Epoch %d] Testing Loss: %.4f' % (state['epoch'], meter_loss.value()[0]))
 
         print('Saving model checkpoint: epochs/epoch_%d.pt' % state['epoch'])

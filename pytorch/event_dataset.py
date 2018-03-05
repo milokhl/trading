@@ -16,7 +16,8 @@ class EventDataset(Dataset):
         memory_limit: how much memory in bytes can this dataset occupy?
 
         Tips:
-        - with a pytorch dataset loader, only use 1 worker
+        - only use 1 dataloader worker
+        - set shuffle to False!
         - make sure that all files in the directory have same number of examples in them
         """
         self.tensor_dir = tensor_dir
